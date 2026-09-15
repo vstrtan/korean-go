@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Korean GO</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1520; --sidebar: #221c2b; --card: #2a2335;
+    --accent: #e8a0bf; --accent2: #9b8ec4; --accent3: #f0c9a0;
+    --text: #f5f0f7; --muted: #a89bb8; --success: #8fd4a0;
+    --border: #3d3548; --polite: #c9a0e8; --danger: #e88a8a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Inter', 'Noto Sans KR', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); min-height:100vh; display:flex;
+    background-image: radial-gradient(ellipse at 10% 0%, rgba(232,160,191,0.12) 0%, transparent 50%),
+                      radial-gradient(ellipse at 90% 100%, rgba(155,142,196,0.1) 0%, transparent 50%);
+  }
+  .sidebar {
+    width:300px; background:var(--sidebar); border-right:1px solid var(--border);
+    height:100vh; position:fixed; left:0; top:0; overflow-y:auto; padding:18px 0; z-index:100;
+    transition: transform 0.3s;
+  }
+  .sidebar-header { padding:0 18px 14px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+  .sidebar-header h2 { font-size:1.2rem; font-weight:700; }
+  .sidebar-header h2 span { color:var(--accent); }
+  .menu-level {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:11px 18px; cursor:pointer; font-weight:600; font-size:0.92rem; color:var(--text);
+  }
+  .menu-level:hover { background:rgba(255,255,255,0.04); }
+  .menu-level.active { background:rgba(232,160,191,0.12); color:var(--accent); }
+  .menu-level.disabled { opacity:0.35; cursor:not-allowed; }
+  .menu-level .arrow { font-size:0.7rem; color:var(--muted); transition:transform 0.2s; }
+  .menu-level.open .arrow { transform:rotate(90deg); }
+  .submenu { display:none; background:rgba(0,0,0,0.15); }
+  .submenu.open { display:block; }
+  .submenu-item {
+    padding:9px 18px 9px 32px; font-size:0.84rem; cursor:pointer; color:var(--muted);
+  }
+  .submenu-item:hover { color:var(--text); background:rgba(255,255,255,0.03); }
+  .submenu-item.active { color:var(--accent2); background:rgba(155,142,196,0.12); font-weight:500; }
+  .menu-special {
+    margin-top:6px; padding:11px 18px; border-top:1px solid var(--border);
+    font-weight:600; cursor:pointer; color:var(--muted); font-size:0.9rem;
+  }
+  .menu-special:hover, .menu-special.active { color:var(--accent); }
+  .menu-special.unknown { color:var(--danger); }
+  .menu-special.unknown.active { background:rgba(232,138,138,0.1); }
+  .menu-special.func { color:var(--accent2); }
+  .menu-special.func.active { background:rgba(155,142,196,0.12); }
+  .menu-special.stats { color:var(--success); }
+  .menu-special.stats.active { background:rgba(143,212,160,0.1); }
+
+  .main { margin-left:300px; flex:1; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+  .container { width:100%; max-width:500px; }
+  header { text-align:center; margin-bottom:22px; }
+  h1 { font-size:1.7rem; font-weight:700; } h1 span { color:var(--accent); }
+  .subtitle { color:var(--muted); font-size:0.9rem; margin-top:4px; }
+
+  .card {
+    background:var(--card); border:1px solid var(--border); border-radius:22px;
+    padding:36px 22px; text-align:center; margin-bottom:14px; min-height:240px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative; box-shadow:0 20px 50px rgba(0,0,0,0.3);
+  }
+  .card.polite-mode { border-color:var(--polite); }
+  .card.counting-mode { border-color:var(--accent3); }
+
+  .mode-badge {
+    position:absolute; top:12px; right:12px; font-size:0.68rem; font-weight:600;
+    padding:3px 10px; border-radius:20px; background:rgba(155,142,196,0.18); color:var(--accent2);
+  }
+  .mode-badge.russian { background:rgba(232,160,191,0.18); color:var(--accent); }
+  .mode-badge.polite { background:rgba(201,160,232,0.22); color:var(--polite); }
+  .mode-badge.digits { background:rgba(240,201,160,0.2); color:var(--accent3); }
+
+  .card-label { font-size:0.76rem; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px; display:none; }
+  .card.polite-mode .card-label { display:block; color:var(--polite); }
+  .card.counting-mode .card-label { display:block; color:var(--accent3); }
+
+  .word { font-size:2.5rem; font-weight:700; line-height:1.3; word-break:break-word; font-family:'Noto Sans KR','Inter',sans-serif; }
+  .word.russian { font-size:1.9rem; }
+  .hint { color:var(--muted); font-size:0.93rem; min-height:24px; margin-top:12px; font-weight:500; }
+  .hint.translation { color:var(--success); }
+  .hint.help { color:#e8c070; }
+  .progress { font-size:0.76rem; color:var(--muted); margin-top:14px; }
+
+  .buttons { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  button {
+    font-family:inherit; font-size:0.93rem; font-weight:600; border:none; border-radius:13px;
+    padding:14px 10px; cursor:pointer; transition:all 0.2s;
+  }
+  button:active { transform:scale(0.97); }
+  .btn-go {
+    grid-column:1 / -1; background:linear-gradient(135deg,#e8a0bf,#c9a0e8);
+    color:#1a1520; font-size:1.22rem; padding:17px; box-shadow:0 8px 24px rgba(232,160,191,0.25);
+  }
+  .btn-kor { background:rgba(155,142,196,0.15); color:var(--accent2); border:1px solid rgba(155,142,196,0.3); }
+  .btn-kor.active, .btn-kor:hover { background:var(--accent2); color:#1a1520; }
+  .btn-rus { background:rgba(232,160,191,0.15); color:var(--accent); border:1px solid rgba(232,160,191,0.3); }
+  .btn-rus.active, .btn-rus:hover { background:var(--accent); color:#1a1520; }
+  .btn-digits { background:rgba(240,201,160,0.15); color:var(--accent3); border:1px solid rgba(240,201,160,0.3); }
+  .btn-digits.active, .btn-digits:hover { background:var(--accent3); color:#1a1520; }
+  .btn-help { background:rgba(255,255,255,0.05); color:var(--text); border:1px solid var(--border); }
+  .btn-help:hover { background:rgba(255,255,255,0.09); }
+  .btn-trans { background:rgba(143,212,160,0.12); color:var(--success); border:1px solid rgba(143,212,160,0.25); }
+  .btn-trans:hover { background:var(--success); color:#1a1520; }
+  .btn-analog { background:rgba(201,160,232,0.15); color:var(--polite); border:1px solid rgba(201,160,232,0.3); }
+  .btn-analog:hover { background:var(--polite); color:#1a1520; }
+  .btn-unknown {
+    grid-column:1 / -1; background:rgba(232,138,138,0.12); color:var(--danger);
+    border:1px solid rgba(232,138,138,0.25); margin-top:2px;
+  }
+  .btn-unknown:hover { background:var(--danger); color:#1a1520; }
+  .btn-remembered {
+    grid-column:1 / -1; background:rgba(143,212,160,0.12); color:var(--success);
+    border:1px solid rgba(143,212,160,0.25); margin-top:2px;
+  }
+  .btn-remembered:hover { background:var(--success); color:#1a1520; }
+
+  .panel { display:none; background:var(--card); border:1px solid var(--border); border-radius:22px; padding:26px 22px; max-height:70vh; overflow-y:auto; }
+  .panel.active { display:block; }
+  .panel h3 { font-size:1.12rem; margin-bottom:14px; color:var(--accent2); }
+  .func-item { margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .func-item:last-child { border-bottom:none; }
+  .func-item .title { font-weight:700; font-size:0.93rem; margin-bottom:3px; display:flex; align-items:center; gap:7px; }
+  .func-item .desc { font-size:0.85rem; color:var(--muted); line-height:1.45; }
+  .func-badge { display:inline-block; font-size:0.68rem; font-weight:600; padding:2px 7px; border-radius:7px; background:rgba(155,142,196,0.18); color:var(--accent2); }
+
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .stat-item { text-align:center; }
+  .circle { width:86px; height:86px; border-radius:50%; margin:0 auto 7px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.95rem; }
+  .stat-name { font-size:0.76rem; color:var(--muted); line-height:1.3; }
+
+  .menu-toggle { display:none; position:fixed; top:14px; left:14px; z-index:200; background:var(--card); border:1px solid var(--border); color:var(--text); width:42px; height:42px; border-radius:11px; font-size:1.25rem; cursor:pointer; }
+  @media (max-width:768px) {
+    .sidebar { transform:translateX(-100%); }
+    .sidebar.open { transform:translateX(0); }
+    .main { margin-left:0; }
+    .menu-toggle { display:flex; align-items:center; justify-content:center; }
+    .word { font-size:2.05rem; } .word.russian { font-size:1.5rem; }
+  }
+</style>
+</head>
+<body>
+  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header"><h2>Korean <span>GO</span></h2></div>
+
+    <div class="menu-special func active" id="funcBtn" onclick="showPanel('func')">Функционал</div>
+
+    <div class="menu-section">
+      <div class="menu-level" id="level1" onclick="toggleLevel(this)">
+        <span>1 уровень</span><span class="arrow">▶</span>
+      </div>
+      <div class="submenu" id="level1-sub">
+        <div class="submenu-item" onclick="selectFilter(this,'all-level1')">Все главы</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 1')">Глава 1 · Страны и профессии</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 2')">Глава 2 · Предметы</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 3')">Глава 3 · Действия и места</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 4')">Глава 4 · Места и направления</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 5')">Глава 5 · Дни и время</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 6')">Глава 6 · Еда</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 7')">Глава 7 · Погода</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 8')">Глава 8 · Хобби и спорт</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 9')">Глава 9 · Семья</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глава 10')">Глава 10 · Распорядок дня</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Глаголы')">Глаголы</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Дополнительно')">Дополнительно</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Вежливые аналоги')">Вежливые аналоги</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Счётные слова')">Счётные слова</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Китайские числительные')">Китайские числительные</div>
+        <div class="submenu-item" onclick="selectFilter(this,'Корейские числительные')">Корейские числительные</div>
+
+      </div>
+    </div>
+
+    <div class="menu-section"><div class="menu-level disabled"><span>2 уровень</span><span class="arrow">▶</span></div></div>
+    <div class="menu-section"><div class="menu-level disabled"><span>3 уровень</span><span class="arrow">▶</span></div></div>
+    <div class="menu-section"><div class="menu-level disabled"><span>4 уровень</span><span class="arrow">▶</span></div></div>
+    <div class="menu-section"><div class="menu-level disabled"><span>5 уровень</span><span class="arrow">▶</span></div></div>
+    <div class="menu-section"><div class="menu-level disabled"><span>6 уровень</span><span class="arrow">▶</span></div></div>
+
+    <div class="menu-special" onclick="selectFilter(this,'all')">Все слова подряд</div>
+    <div class="menu-special unknown" id="unknownList" onclick="selectFilter(this,'unknown')">Не знаю (<span id="unknownCount">0</span>)</div>
+    <div class="menu-special stats" id="statsBtn" onclick="showPanel('stats')">Статистика</div>
+  </aside>
+
+  <main class="main">
+    <div class="container">
+      <div class="panel active" id="panel-func">
+        <h3>Как пользоваться Korean GO</h3>
+        <div class="func-item"><div class="title"><span class="func-badge">GO</span> Главная кнопка</div><div class="desc">Следующее случайное слово. Без повторов.</div></div>
+        <div class="func-item"><div class="title"><span class="func-badge">Корейский / Русский</span></div><div class="desc">Язык следующего слова.</div></div>
+        <div class="func-item"><div class="title"><span class="func-badge">Помощь</span></div><div class="desc">Глава / раздел слова.</div></div>
+        <div class="func-item"><div class="title"><span class="func-badge">Перевод / Аналог</span></div><div class="desc">Перевод или вежливый аналог.</div></div>
+        <div class="func-item"><div class="title"><span class="func-badge">Не знаю</span></div><div class="desc">Добавляет слово в список сложных.</div></div>
+        <div class="func-item"><div class="title"><span class="func-badge">Я запомнил</span></div><div class="desc">Убирает слово из «Не знаю».</div></div>
+        <button class="btn-go" style="margin-top:12px" onclick="startGame()">Начать заниматься →</button>
+      </div>
+
+      <div class="panel" id="panel-stats">
+        <h3>Твоя статистика</h3>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px">Слова, которые ты не добавлял в «Не знаю»</p>
+        <div class="stats-grid" id="statsGrid"></div>
+      </div>
+
+      <div id="gameArea" style="display:none">
+        <header>
+          <h1>Korean <span>GO</span></h1>
+          <p class="subtitle" id="currentFilterLabel">1 уровень · 431</p>
+        </header>
+        <div class="card" id="card">
+          <div class="mode-badge" id="modeBadge">КОРЕЙСКИЙ</div>
+          <div class="card-label" id="cardLabel"></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;">
+            <div class="word" id="wordDisplay">Нажми «GO»</div>
+            <button id="soundBtn" title="Произнести" onclick="playSound()"
+              style="display:none;background:rgba(232,160,191,0.18);border:1px solid rgba(232,160,191,0.4);
+                     color:var(--accent);width:44px;height:44px;border-radius:50%;font-size:1.25rem;
+                     cursor:pointer;flex-shrink:0;align-items:center;justify-content:center;">
+              🔊
+            </button>
+          </div>
+          <div class="hint" id="hintDisplay"></div>
+          <div class="progress" id="progress">Осталось: —</div>
+        </div>
+        <div class="buttons">
+          <button class="btn-go" onclick="go()">GO</button>
+          <button class="btn-kor active" id="btnKor" onclick="setMode('korean')">Корейский</button>
+          <button class="btn-rus" id="btnRus" onclick="setMode('russian')">Русский</button>
+          <button class="btn-help" onclick="help()">Помощь</button>
+          <button class="btn-trans" id="btnTrans" onclick="showTranslate()">Перевод</button>
+          <button class="btn-unknown" id="btnUnknown">Не знаю</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+<script>
+const ALL_WORDS = [{"ko": "나라", "ru": "страна", "section": "Глава 1", "type": "normal", "help": "страна", "pair": null}, {"ko": "한국", "ru": "Корея (Южная)", "section": "Глава 1", "type": "normal", "help": "Корея (Южная)", "pair": null}, {"ko": "중국", "ru": "Китай", "section": "Глава 1", "type": "normal", "help": "Китай", "pair": null}, {"ko": "미국", "ru": "США, Америка", "section": "Глава 1", "type": "normal", "help": "США, Америка", "pair": null}, {"ko": "일본", "ru": "Япония", "section": "Глава 1", "type": "normal", "help": "Япония", "pair": null}, {"ko": "프랑스", "ru": "Франция", "section": "Глава 1", "type": "normal", "help": "Франция", "pair": null}, {"ko": "독일", "ru": "Германия", "section": "Глава 1", "type": "normal", "help": "Германия", "pair": null}, {"ko": "호주", "ru": "Австралия", "section": "Глава 1", "type": "normal", "help": "Австралия", "pair": null}, {"ko": "영국", "ru": "Великобритания, Англия", "section": "Глава 1", "type": "normal", "help": "Великобритания, Англия", "pair": null}, {"ko": "선생님", "ru": "учитель, преподаватель", "section": "Глава 1", "type": "normal", "help": "учитель, преподаватель", "pair": null}, {"ko": "학생", "ru": "студент, ученик", "section": "Глава 1", "type": "normal", "help": "студент, ученик", "pair": null}, {"ko": "의사", "ru": "врач", "section": "Глава 1", "type": "normal", "help": "врач", "pair": null}, {"ko": "회사원", "ru": "офисный работник, служащий", "section": "Глава 1", "type": "normal", "help": "офисный работник, служащий", "pair": null}, {"ko": "요리사", "ru": "повар", "section": "Глава 1", "type": "normal", "help": "повар", "pair": null}, {"ko": "기자", "ru": "журналист", "section": "Глава 1", "type": "normal", "help": "журналист", "pair": null}, {"ko": "가수", "ru": "певец, певица", "section": "Глава 1", "type": "normal", "help": "певец, певица", "pair": null}, {"ko": "군인", "ru": "военнослужащий, солдат", "section": "Глава 1", "type": "normal", "help": "военнослужащий, солдат", "pair": null}, {"ko": "만나서 반가워요", "ru": "приятно познакомиться", "section": "Глава 1", "type": "normal", "help": "приятно познакомиться", "pair": null}, {"ko": "안녕히 가세요", "ru": "до свидания (тому, кто уходит)", "section": "Глава 1", "type": "normal", "help": "до свидания (тому, кто уходит)", "pair": null}, {"ko": "안녕히 계세요", "ru": "до свидания (тому, кто остаётся)", "section": "Глава 1", "type": "normal", "help": "до свидания (тому, кто остаётся)", "pair": null}, {"ko": "주부", "ru": "домохозяйка", "section": "Глава 1", "type": "normal", "help": "домохозяйка", "pair": null}, {"ko": "네", "ru": "да", "section": "Глава 1", "type": "normal", "help": "да", "pair": null}, {"ko": "아니요", "ru": "нет", "section": "Глава 1", "type": "normal", "help": "нет", "pair": null}, {"ko": "저", "ru": "я (вежл.)", "section": "Глава 1", "type": "normal", "help": "я (вежл.)", "pair": null}, {"ko": "어느", "ru": "какой, который", "section": "Глава 1", "type": "normal", "help": "какой, который", "pair": null}, {"ko": "직업", "ru": "профессия, занятие", "section": "Глава 1", "type": "normal", "help": "профессия, занятие", "pair": null}, {"ko": "무엇/뭐", "ru": "что", "section": "Глава 1", "type": "normal", "help": "что", "pair": null}, {"ko": "러시아", "ru": "Россия", "section": "Глава 1", "type": "normal", "help": "Россия", "pair": null}, {"ko": "이름", "ru": "имя", "section": "Глава 1", "type": "normal", "help": "имя", "pair": null}, {"ko": "전화 번호", "ru": "номер телефона", "section": "Глава 1", "type": "normal", "help": "номер телефона", "pair": null}, {"ko": "국적", "ru": "гражданство, национальность", "section": "Глава 1", "type": "normal", "help": "гражданство, национальность", "pair": null}, {"ko": "책상", "ru": "письменный стол", "section": "Глава 2", "type": "normal", "help": "письменный стол", "pair": null}, {"ko": "의자", "ru": "стул", "section": "Глава 2", "type": "normal", "help": "стул", "pair": null}, {"ko": "책", "ru": "книга", "section": "Глава 2", "type": "normal", "help": "книга", "pair": null}, {"ko": "공책/노트", "ru": "тетрадь", "section": "Глава 2", "type": "normal", "help": "тетрадь", "pair": null}, {"ko": "볼펜", "ru": "шариковая ручка", "section": "Глава 2", "type": "normal", "help": "шариковая ручка", "pair": null}, {"ko": "연필", "ru": "карандаш", "section": "Глава 2", "type": "normal", "help": "карандаш", "pair": null}, {"ko": "가방", "ru": "сумка, портфель", "section": "Глава 2", "type": "normal", "help": "сумка, портфель", "pair": null}, {"ko": "지우개", "ru": "ластик", "section": "Глава 2", "type": "normal", "help": "ластик", "pair": null}, {"ko": "시계", "ru": "часы", "section": "Глава 2", "type": "normal", "help": "часы", "pair": null}, {"ko": "모자", "ru": "шляпа, кепка", "section": "Глава 2", "type": "normal", "help": "шляпа, кепка", "pair": null}, {"ko": "우산", "ru": "зонт", "section": "Глава 2", "type": "normal", "help": "зонт", "pair": null}, {"ko": "신문", "ru": "газета", "section": "Глава 2", "type": "normal", "help": "газета", "pair": null}, {"ko": "카메라", "ru": "фотоаппарат, камера", "section": "Глава 2", "type": "normal", "help": "фотоаппарат, камера", "pair": null}, {"ko": "사전", "ru": "словарь", "section": "Глава 2", "type": "normal", "help": "словарь", "pair": null}, {"ko": "안경", "ru": "очки", "section": "Глава 2", "type": "normal", "help": "очки", "pair": null}, {"ko": "휴대폰", "ru": "мобильный телефон", "section": "Глава 2", "type": "normal", "help": "мобильный телефон", "pair": null}, {"ko": "남자 친구", "ru": "парень, молодой человек", "section": "Глава 2", "type": "normal", "help": "парень, молодой человек", "pair": null}, {"ko": "남자인 친구", "ru": "друг-мужчина", "section": "Глава 2", "type": "normal", "help": "друг-мужчина", "pair": null}, {"ko": "차", "ru": "машина, чай", "section": "Глава 2", "type": "normal", "help": "машина, чай", "pair": null}, {"ko": "친구", "ru": "друг", "section": "Глава 2", "type": "normal", "help": "друг", "pair": null}, {"ko": "침대", "ru": "кровать", "section": "Глава 2", "type": "normal", "help": "кровать", "pair": null}, {"ko": "룸메이트", "ru": "сосед по комнате", "section": "Глава 2", "type": "normal", "help": "сосед по комнате", "pair": null}, {"ko": "이웃", "ru": "сосед", "section": "Глава 2", "type": "normal", "help": "сосед", "pair": null}, {"ko": "사과", "ru": "яблоко", "section": "Глава 2", "type": "normal", "help": "яблоко", "pair": null}, {"ko": "오렌지", "ru": "апельсин", "section": "Глава 2", "type": "normal", "help": "апельсин", "pair": null}, {"ko": "방", "ru": "комната", "section": "Глава 2", "type": "normal", "help": "комната", "pair": null}, {"ko": "뭐", "ru": "что", "section": "Глава 2", "type": "normal", "help": "что", "pair": null}, {"ko": "창문", "ru": "окно", "section": "Глава 2", "type": "normal", "help": "окно", "pair": null}, {"ko": "지도", "ru": "карта", "section": "Глава 2", "type": "normal", "help": "карта", "pair": null}, {"ko": "자", "ru": "линейка", "section": "Глава 2", "type": "normal", "help": "линейка", "pair": null}, {"ko": "전자 사전", "ru": "электронный словарь", "section": "Глава 2", "type": "normal", "help": "электронный словарь", "pair": null}, {"ko": "필통", "ru": "пенал", "section": "Глава 2", "type": "normal", "help": "пенал", "pair": null}, {"ko": "잡지", "ru": "журнал", "section": "Глава 2", "type": "normal", "help": "журнал", "pair": null}, {"ko": "지갑", "ru": "кошелёк", "section": "Глава 2", "type": "normal", "help": "кошелёк", "pair": null}, {"ko": "여기 있어요", "ru": "вот, пожалуйста (при передаче)", "section": "Глава 2", "type": "normal", "help": "вот, пожалуйста (при передаче)", "pair": null}, {"ko": "커피", "ru": "кофе", "section": "Глава 2", "type": "normal", "help": "кофе", "pair": null}, {"ko": "좀", "ru": "немного, чуть-чуть", "section": "Глава 2", "type": "normal", "help": "немного, чуть-чуть", "pair": null}, {"ko": "콜라", "ru": "кола", "section": "Глава 2", "type": "normal", "help": "кола", "pair": null}, {"ko": "주스", "ru": "сок", "section": "Глава 2", "type": "normal", "help": "сок", "pair": null}, {"ko": "교통카드", "ru": "транспортная карта", "section": "Глава 2", "type": "normal", "help": "транспортная карта", "pair": null}, {"ko": "휴지", "ru": "салфетка, туалетная бумага", "section": "Глава 2", "type": "normal", "help": "салфетка, туалетная бумага", "pair": null}, {"ko": "물", "ru": "вода", "section": "Глава 2", "type": "normal", "help": "вода", "pair": null}, {"ko": "영화", "ru": "фильм", "section": "Глава 2", "type": "normal", "help": "фильм", "pair": null}, {"ko": "우유", "ru": "молоко", "section": "Глава 2", "type": "normal", "help": "молоко", "pair": null}, {"ko": "텔레비전 (티비)", "ru": "телевизор", "section": "Глава 2", "type": "normal", "help": "телевизор", "pair": null}, {"ko": "냉장고", "ru": "холодильник", "section": "Глава 2", "type": "normal", "help": "холодильник", "pair": null}, {"ko": "바나나", "ru": "банан", "section": "Глава 2", "type": "normal", "help": "банан", "pair": null}, {"ko": "딸기", "ru": "клубника", "section": "Глава 2", "type": "normal", "help": "клубника", "pair": null}, {"ko": "어서 오세요", "ru": "добро пожаловать", "section": "Глава 2", "type": "normal", "help": "добро пожаловать", "pair": null}, {"ko": "우리", "ru": "мы, наш", "section": "Глава 2", "type": "normal", "help": "мы, наш", "pair": null}, {"ko": "자다", "ru": "спать", "section": "Глава 3", "type": "normal", "help": "спать", "pair": null}, {"ko": "공부하다", "ru": "учиться, заниматься", "section": "Глава 3", "type": "normal", "help": "учиться, заниматься", "pair": null}, {"ko": "일하다", "ru": "работать", "section": "Глава 3", "type": "normal", "help": "работать", "pair": null}, {"ko": "운동하다", "ru": "заниматься спортом", "section": "Глава 3", "type": "normal", "help": "заниматься спортом", "pair": null}, {"ko": "숙제를 하다", "ru": "делать домашнее задание", "section": "Глава 3", "type": "normal", "help": "делать домашнее задание", "pair": null}, {"ko": "옷을 사다", "ru": "покупать одежду", "section": "Глава 3", "type": "normal", "help": "покупать одежду", "pair": null}, {"ko": "영화를 보다", "ru": "смотреть фильм", "section": "Глава 3", "type": "normal", "help": "смотреть фильм", "pair": null}, {"ko": "친구를 만나다", "ru": "встречаться с другом", "section": "Глава 3", "type": "normal", "help": "встречаться с другом", "pair": null}, {"ko": "태권도를 배우다", "ru": "изучать тхэквондо", "section": "Глава 3", "type": "normal", "help": "изучать тхэквондо", "pair": null}, {"ko": "밥을 먹다", "ru": "есть (рис/еду)", "section": "Глава 3", "type": "normal", "help": "есть (рис/еду)", "pair": null}, {"ko": "커피를 마시다", "ru": "пить кофе", "section": "Глава 3", "type": "normal", "help": "пить кофе", "pair": null}, {"ko": "책을 읽다", "ru": "читать книгу", "section": "Глава 3", "type": "normal", "help": "читать книгу", "pair": null}, {"ko": "도서관", "ru": "библиотека", "section": "Глава 3", "type": "normal", "help": "библиотека", "pair": null}, {"ko": "집", "ru": "дом", "section": "Глава 3", "type": "normal", "help": "дом", "pair": null}, {"ko": "백화점", "ru": "универмаг", "section": "Глава 3", "type": "normal", "help": "универмаг", "pair": null}, {"ko": "시장", "ru": "рынок", "section": "Глава 3", "type": "normal", "help": "рынок", "pair": null}, {"ko": "공원", "ru": "парк", "section": "Глава 3", "type": "normal", "help": "парк", "pair": null}, {"ko": "커피숍", "ru": "кофейня", "section": "Глава 3", "type": "normal", "help": "кофейня", "pair": null}, {"ko": "극장", "ru": "кинотеатр, театр", "section": "Глава 3", "type": "normal", "help": "кинотеатр, театр", "pair": null}, {"ko": "학교", "ru": "школа", "section": "Глава 3", "type": "normal", "help": "школа", "pair": null}, {"ko": "식당", "ru": "ресторан, столовая", "section": "Глава 3", "type": "normal", "help": "ресторан, столовая", "pair": null}, {"ko": "회사", "ru": "компания, фирма", "section": "Глава 3", "type": "normal", "help": "компания, фирма", "pair": null}, {"ko": "지금", "ru": "сейчас", "section": "Глава 3", "type": "normal", "help": "сейчас", "pair": null}, {"ko": "쉬다", "ru": "отдыхать", "section": "Глава 3", "type": "normal", "help": "отдыхать", "pair": null}, {"ko": "하다", "ru": "делать", "section": "Глава 3", "type": "normal", "help": "делать", "pair": null}, {"ko": "피자", "ru": "пицца", "section": "Глава 3", "type": "normal", "help": "пицца", "pair": null}, {"ko": "아르바이트하다 / 알바하다", "ru": "подрабатывать", "section": "Глава 3", "type": "normal", "help": "подрабатывать", "pair": null}, {"ko": "요리하다", "ru": "готовить еду", "section": "Глава 3", "type": "normal", "help": "готовить еду", "pair": null}, {"ko": "오늘", "ru": "сегодня", "section": "Глава 3", "type": "normal", "help": "сегодня", "pair": null}, {"ko": "그리고", "ru": "и, а также", "section": "Глава 3", "type": "normal", "help": "и, а также", "pair": null}, {"ko": "어디", "ru": "где", "section": "Глава 3", "type": "normal", "help": "где", "pair": null}, {"ko": "고기", "ru": "мясо", "section": "Глава 3", "type": "normal", "help": "мясо", "pair": null}, {"ko": "드라마", "ru": "сериал, драма", "section": "Глава 3", "type": "normal", "help": "сериал, драма", "pair": null}, {"ko": "그럼", "ru": "тогда, в таком случае", "section": "Глава 3", "type": "normal", "help": "тогда, в таком случае", "pair": null}, {"ko": "가르치다", "ru": "учить (кого-то)", "section": "Глава 3", "type": "normal", "help": "учить (кого-то)", "pair": null}, {"ko": "노래방", "ru": "караоке", "section": "Глава 3", "type": "normal", "help": "караоке", "pair": null}, {"ko": "교실", "ru": "класс, аудитория", "section": "Глава 3", "type": "normal", "help": "класс, аудитория", "pair": null}, {"ko": "공항", "ru": "аэропорт", "section": "Глава 4", "type": "normal", "help": "аэропорт", "pair": null}, {"ko": "우체국", "ru": "почта", "section": "Глава 4", "type": "normal", "help": "почта", "pair": null}, {"ko": "대사관", "ru": "посольство", "section": "Глава 4", "type": "normal", "help": "посольство", "pair": null}, {"ko": "은행", "ru": "банк", "section": "Глава 4", "type": "normal", "help": "банк", "pair": null}, {"ko": "가게", "ru": "магазин", "section": "Глава 4", "type": "normal", "help": "магазин", "pair": null}, {"ko": "약국", "ru": "аптека", "section": "Глава 4", "type": "normal", "help": "аптека", "pair": null}, {"ko": "병원", "ru": "больница", "section": "Глава 4", "type": "normal", "help": "больница", "pair": null}, {"ko": "미용실", "ru": "парикмахерская, салон красоты", "section": "Глава 4", "type": "normal", "help": "парикмахерская, салон красоты", "pair": null}, {"ko": "앞", "ru": "перед, впереди", "section": "Глава 4", "type": "normal", "help": "перед, впереди", "pair": null}, {"ko": "뒤", "ru": "сзади, позади", "section": "Глава 4", "type": "normal", "help": "сзади, позади", "pair": null}, {"ko": "옆", "ru": "рядом, сбоку", "section": "Глава 4", "type": "normal", "help": "рядом, сбоку", "pair": null}, {"ko": "안/속", "ru": "внутри", "section": "Глава 4", "type": "normal", "help": "внутри", "pair": null}, {"ko": "아래/밑", "ru": "внизу, под", "section": "Глава 4", "type": "normal", "help": "внизу, под", "pair": null}, {"ko": "위", "ru": "сверху, над", "section": "Глава 4", "type": "normal", "help": "сверху, над", "pair": null}, {"ko": "여기", "ru": "здесь", "section": "Глава 4", "type": "normal", "help": "здесь", "pair": null}, {"ko": "거기", "ru": "там (близко к собеседнику)", "section": "Глава 4", "type": "normal", "help": "там (близко к собеседнику)", "pair": null}, {"ko": "저기", "ru": "там (далеко)", "section": "Глава 4", "type": "normal", "help": "там (далеко)", "pair": null}, {"ko": "서울", "ru": "Сеул", "section": "Глава 4", "type": "normal", "help": "Сеул", "pair": null}, {"ko": "시내", "ru": "центр города", "section": "Глава 4", "type": "normal", "help": "центр города", "pair": null}, {"ko": "구경하다", "ru": "осматривать, смотреть (достопримечательности)", "section": "Глава 4", "type": "normal", "help": "осматривать, смотреть (достопримечательности)", "pair": null}, {"ko": "쇼핑하다", "ru": "ходить по магазинам", "section": "Глава 4", "type": "normal", "help": "ходить по магазинам", "pair": null}, {"ko": "연극", "ru": "спектакль, пьеса", "section": "Глава 4", "type": "normal", "help": "спектакль, пьеса", "pair": null}, {"ko": "알다", "ru": "знать", "section": "Глава 4", "type": "normal", "help": "знать", "pair": null}, {"ko": "어머니", "ru": "мама", "section": "Глава 4", "type": "normal", "help": "мама", "pair": null}, {"ko": "아버지", "ru": "папа", "section": "Глава 4", "type": "normal", "help": "папа", "pair": null}, {"ko": "잘 지내다", "ru": "хорошо жить / как дела", "section": "Глава 4", "type": "normal", "help": "хорошо жить / как дела", "pair": null}, {"ko": "기숙사", "ru": "общежитие", "section": "Глава 4", "type": "normal", "help": "общежитие", "pair": null}, {"ko": "사진", "ru": "фотография", "section": "Глава 4", "type": "normal", "help": "фотография", "pair": null}, {"ko": "매일", "ru": "каждый день", "section": "Глава 4", "type": "normal", "help": "каждый день", "pair": null}, {"ko": "반", "ru": "класс (школьный)", "section": "Глава 4", "type": "normal", "help": "класс (школьный)", "pair": null}, {"ko": "사랑하다", "ru": "любить", "section": "Глава 4", "type": "normal", "help": "любить", "pair": null}, {"ko": "서점", "ru": "книжный магазин", "section": "Глава 4", "type": "normal", "help": "книжный магазин", "pair": null}, {"ko": "빵집", "ru": "пекарня", "section": "Глава 4", "type": "normal", "help": "пекарня", "pair": null}, {"ko": "화장실", "ru": "туалет", "section": "Глава 4", "type": "normal", "help": "туалет", "pair": null}, {"ko": "음식", "ru": "еда", "section": "Глава 4", "type": "normal", "help": "еда", "pair": null}, {"ko": "그림 (그림을 그리다)", "ru": "картина / рисовать", "section": "Глава 4", "type": "normal", "help": "картина / рисовать", "pair": null}, {"ko": "기념품", "ru": "сувенир", "section": "Глава 4", "type": "normal", "help": "сувенир", "pair": null}, {"ko": "월요일", "ru": "понедельник", "section": "Глава 5", "type": "normal", "help": "понедельник", "pair": null}, {"ko": "화요일", "ru": "вторник", "section": "Глава 5", "type": "normal", "help": "вторник", "pair": null}, {"ko": "수요일", "ru": "среда", "section": "Глава 5", "type": "normal", "help": "среда", "pair": null}, {"ko": "목요일", "ru": "четверг", "section": "Глава 5", "type": "normal", "help": "четверг", "pair": null}, {"ko": "금요일", "ru": "пятница", "section": "Глава 5", "type": "normal", "help": "пятница", "pair": null}, {"ko": "토요일", "ru": "суббота", "section": "Глава 5", "type": "normal", "help": "суббота", "pair": null}, {"ko": "일요일", "ru": "воскресенье", "section": "Глава 5", "type": "normal", "help": "воскресенье", "pair": null}, {"ko": "요일", "ru": "день недели", "section": "Глава 5", "type": "normal", "help": "день недели", "pair": null}, {"ko": "주말", "ru": "выходные", "section": "Глава 5", "type": "normal", "help": "выходные", "pair": null}, {"ko": "날짜", "ru": "дата", "section": "Глава 5", "type": "normal", "help": "дата", "pair": null}, {"ko": "며칠", "ru": "какое число, сколько дней", "section": "Глава 5", "type": "normal", "help": "какое число, сколько дней", "pair": null}, {"ko": "시험", "ru": "экзамен, тест", "section": "Глава 5", "type": "normal", "help": "экзамен, тест", "pair": null}, {"ko": "언제", "ru": "когда", "section": "Глава 5", "type": "normal", "help": "когда", "pair": null}, {"ko": "무슨", "ru": "какой, что за", "section": "Глава 5", "type": "normal", "help": "какой, что за", "pair": null}, {"ko": "생일", "ru": "день рождения", "section": "Глава 5", "type": "normal", "help": "день рождения", "pair": null}, {"ko": "파티", "ru": "вечеринка", "section": "Глава 5", "type": "normal", "help": "вечеринка", "pair": null}, {"ko": "시간", "ru": "время, час", "section": "Глава 5", "type": "normal", "help": "время, час", "pair": null}, {"ko": "미안하다", "ru": "извиняться, сожалеть", "section": "Глава 5", "type": "normal", "help": "извиняться, сожалеть", "pair": null}, {"ko": "약속", "ru": "обещание, договорённость", "section": "Глава 5", "type": "normal", "help": "обещание, договорённость", "pair": null}, {"ko": "같이", "ru": "вместе", "section": "Глава 5", "type": "normal", "help": "вместе", "pair": null}, {"ko": "어제", "ru": "вчера", "section": "Глава 5", "type": "normal", "help": "вчера", "pair": null}, {"ko": "내일", "ru": "завтра", "section": "Глава 5", "type": "normal", "help": "завтра", "pair": null}, {"ko": "카드", "ru": "карта (кредитная и т.д.)", "section": "Глава 5", "type": "normal", "help": "карта (кредитная и т.д.)", "pair": null}, {"ko": "선물", "ru": "подарок", "section": "Глава 5", "type": "normal", "help": "подарок", "pair": null}, {"ko": "세수하다", "ru": "умываться", "section": "Глава 5", "type": "normal", "help": "умываться", "pair": null}, {"ko": "이를 닦다", "ru": "чистить зубы", "section": "Глава 5", "type": "normal", "help": "чистить зубы", "pair": null}, {"ko": "산책하다", "ru": "гулять", "section": "Глава 5", "type": "normal", "help": "гулять", "pair": null}, {"ko": "사진을 찍다", "ru": "фотографировать", "section": "Глава 5", "type": "normal", "help": "фотографировать", "pair": null}, {"ko": "누구", "ru": "кто", "section": "Глава 5", "type": "normal", "help": "кто", "pair": null}, {"ko": "혼자", "ru": "один, в одиночку", "section": "Глава 5", "type": "normal", "help": "один, в одиночку", "pair": null}, {"ko": "끝나다", "ru": "заканчиваться", "section": "Глава 5", "type": "normal", "help": "заканчиваться", "pair": null}, {"ko": "그래서", "ru": "поэтому", "section": "Глава 5", "type": "normal", "help": "поэтому", "pair": null}, {"ko": "지난주", "ru": "на прошлой неделе", "section": "Глава 5", "type": "normal", "help": "на прошлой неделе", "pair": null}, {"ko": "갈비탕", "ru": "суп с рёбрышками", "section": "Глава 6", "type": "normal", "help": "суп с рёбрышками", "pair": null}, {"ko": "김밥", "ru": "кимбап (ролл с водорослями)", "section": "Глава 6", "type": "normal", "help": "кимбап (ролл с водорослями)", "pair": null}, {"ko": "김치", "ru": "кимчи", "section": "Глава 6", "type": "normal", "help": "кимчи", "pair": null}, {"ko": "김치찌개", "ru": "суп с кимчи", "section": "Глава 6", "type": "normal", "help": "суп с кимчи", "pair": null}, {"ko": "냉면", "ru": "нэнмён (холодная лапша)", "section": "Глава 6", "type": "normal", "help": "нэнмён (холодная лапша)", "pair": null}, {"ko": "라면", "ru": "рамён", "section": "Глава 6", "type": "normal", "help": "рамён", "pair": null}, {"ko": "불고기", "ru": "пульгоги", "section": "Глава 6", "type": "normal", "help": "пульгоги", "pair": null}, {"ko": "비빔밥", "ru": "пибимпап", "section": "Глава 6", "type": "normal", "help": "пибимпап", "pair": null}, {"ko": "샌드위치", "ru": "сэндвич", "section": "Глава 6", "type": "normal", "help": "сэндвич", "pair": null}, {"ko": "스파게티", "ru": "спагетти", "section": "Глава 6", "type": "normal", "help": "спагетти", "pair": null}, {"ko": "햄버거", "ru": "гамбургер", "section": "Глава 6", "type": "normal", "help": "гамбургер", "pair": null}, {"ko": "귤", "ru": "мандарин", "section": "Глава 6", "type": "normal", "help": "мандарин", "pair": null}, {"ko": "수박", "ru": "арбуз", "section": "Глава 6", "type": "normal", "help": "арбуз", "pair": null}, {"ko": "얼마", "ru": "сколько (стоит)", "section": "Глава 6", "type": "normal", "help": "сколько (стоит)", "pair": null}, {"ko": "십 원", "ru": "десять вон", "section": "Глава 6", "type": "normal", "help": "десять вон", "pair": null}, {"ko": "오십 원", "ru": "пятьдесят вон", "section": "Глава 6", "type": "normal", "help": "пятьдесят вон", "pair": null}, {"ko": "백 원", "ru": "сто вон", "section": "Глава 6", "type": "normal", "help": "сто вон", "pair": null}, {"ko": "눈이 오다", "ru": "идёт снег", "section": "Глава 7", "type": "normal", "help": "идёт снег", "pair": null}, {"ko": "덥다", "ru": "жарко", "section": "Глава 7", "type": "normal", "help": "жарко", "pair": null}, {"ko": "따뜻하다", "ru": "тепло", "section": "Глава 7", "type": "normal", "help": "тепло", "pair": null}, {"ko": "맑다", "ru": "ясно (о погоде)", "section": "Глава 7", "type": "normal", "help": "ясно (о погоде)", "pair": null}, {"ko": "비가 오다", "ru": "идёт дождь", "section": "Глава 7", "type": "normal", "help": "идёт дождь", "pair": null}, {"ko": "시원하다", "ru": "прохладно, свежо", "section": "Глава 7", "type": "normal", "help": "прохладно, свежо", "pair": null}, {"ko": "춥다", "ru": "холодно", "section": "Глава 7", "type": "normal", "help": "холодно", "pair": null}, {"ko": "흐리다", "ru": "пасмурно", "section": "Глава 7", "type": "normal", "help": "пасмурно", "pair": null}, {"ko": "계절", "ru": "время года", "section": "Глава 7", "type": "normal", "help": "время года", "pair": null}, {"ko": "봄", "ru": "весна", "section": "Глава 7", "type": "normal", "help": "весна", "pair": null}, {"ko": "여름", "ru": "лето", "section": "Глава 7", "type": "normal", "help": "лето", "pair": null}, {"ko": "가을", "ru": "осень", "section": "Глава 7", "type": "normal", "help": "осень", "pair": null}, {"ko": "겨울", "ru": "зима", "section": "Глава 7", "type": "normal", "help": "зима", "pair": null}, {"ko": "가볍다", "ru": "лёгкий", "section": "Глава 7", "type": "normal", "help": "лёгкий", "pair": null}, {"ko": "무겁다", "ru": "тяжёлый", "section": "Глава 7", "type": "normal", "help": "тяжёлый", "pair": null}, {"ko": "쉽다", "ru": "лёгкий (простой)", "section": "Глава 7", "type": "normal", "help": "лёгкий (простой)", "pair": null}, {"ko": "어렵다", "ru": "трудный", "section": "Глава 7", "type": "normal", "help": "трудный", "pair": null}, {"ko": "맵다", "ru": "острый", "section": "Глава 7", "type": "normal", "help": "острый", "pair": null}, {"ko": "게임을 하다", "ru": "играть в игры", "section": "Глава 8", "type": "normal", "help": "играть в игры", "pair": null}, {"ko": "골프를 치다", "ru": "играть в гольф", "section": "Глава 8", "type": "normal", "help": "играть в гольф", "pair": null}, {"ko": "기타를 치다", "ru": "играть на гитаре", "section": "Глава 8", "type": "normal", "help": "играть на гитаре", "pair": null}, {"ko": "농구를 하다", "ru": "играть в баскетбол", "section": "Глава 8", "type": "normal", "help": "играть в баскетбол", "pair": null}, {"ko": "당구를 치다", "ru": "играть в бильярд", "section": "Глава 8", "type": "normal", "help": "играть в бильярд", "pair": null}, {"ko": "스케이트를 타다", "ru": "кататься на коньках", "section": "Глава 8", "type": "normal", "help": "кататься на коньках", "pair": null}, {"ko": "스키를 타다", "ru": "кататься на лыжах", "section": "Глава 8", "type": "normal", "help": "кататься на лыжах", "pair": null}, {"ko": "자전거를 타다", "ru": "ездить на велосипеде", "section": "Глава 8", "type": "normal", "help": "ездить на велосипеде", "pair": null}, {"ko": "축구를 하다", "ru": "играть в футбол", "section": "Глава 8", "type": "normal", "help": "играть в футбол", "pair": null}, {"ko": "테니스를 치다", "ru": "играть в теннис", "section": "Глава 8", "type": "normal", "help": "играть в теннис", "pair": null}, {"ko": "피아노를 치다", "ru": "играть на пианино", "section": "Глава 8", "type": "normal", "help": "играть на пианино", "pair": null}, {"ko": "낮잠을 자다", "ru": "спать днём", "section": "Глава 8", "type": "normal", "help": "спать днём", "pair": null}, {"ko": "노래방에 가다", "ru": "ходить в караоке", "section": "Глава 8", "type": "normal", "help": "ходить в караоке", "pair": null}, {"ko": "등산(을) 하다", "ru": "ходить в горы", "section": "Глава 8", "type": "normal", "help": "ходить в горы", "pair": null}, {"ko": "산책(을) 하다", "ru": "гулять", "section": "Глава 8", "type": "normal", "help": "гулять", "pair": null}, {"ko": "여행(을) 하다", "ru": "путешествовать", "section": "Глава 8", "type": "normal", "help": "путешествовать", "pair": null}, {"ko": "찜질방에 가다", "ru": "ходить в чимджильбан (корейская баня)", "section": "Глава 8", "type": "normal", "help": "ходить в чимджильбан (корейская баня)", "pair": null}, {"ko": "오다", "ru": "приходить", "section": "Глаголы", "type": "normal", "help": "приходить", "pair": null}, {"ko": "마시다", "ru": "пить", "section": "Глаголы", "type": "normal", "help": "пить", "pair": null}, {"ko": "먹다", "ru": "есть", "section": "Глаголы", "type": "normal", "help": "есть", "pair": null}, {"ko": "가다", "ru": "идти", "section": "Глаголы", "type": "normal", "help": "идти", "pair": null}, {"ko": "듣다", "ru": "слушать", "section": "Глаголы", "type": "normal", "help": "слушать", "pair": null}, {"ko": "보다", "ru": "смотреть", "section": "Глаголы", "type": "normal", "help": "смотреть", "pair": null}, {"ko": "열다", "ru": "открывать", "section": "Глаголы", "type": "normal", "help": "открывать", "pair": null}, {"ko": "닫다", "ru": "закрывать", "section": "Глаголы", "type": "normal", "help": "закрывать", "pair": null}, {"ko": "주다", "ru": "давать", "section": "Глаголы", "type": "normal", "help": "давать", "pair": null}, {"ko": "만들다", "ru": "делать, изготовлять", "section": "Глаголы", "type": "normal", "help": "делать, изготовлять", "pair": null}, {"ko": "읽다", "ru": "читать", "section": "Глаголы", "type": "normal", "help": "читать", "pair": null}, {"ko": "쓰다", "ru": "писать", "section": "Глаголы", "type": "normal", "help": "писать", "pair": null}, {"ko": "운전하다", "ru": "водить (машину)", "section": "Глаголы", "type": "normal", "help": "водить (машину)", "pair": null}, {"ko": "사다", "ru": "покупать", "section": "Глаголы", "type": "normal", "help": "покупать", "pair": null}, {"ko": "앉다", "ru": "сидеть", "section": "Глаголы", "type": "normal", "help": "сидеть", "pair": null}, {"ko": "기다리다", "ru": "ждать", "section": "Глаголы", "type": "normal", "help": "ждать", "pair": null}, {"ko": "싫어하다", "ru": "ненавидеть, не любить", "section": "Глаголы", "type": "normal", "help": "ненавидеть, не любить", "pair": null}, {"ko": "웃다", "ru": "смеяться", "section": "Глаголы", "type": "normal", "help": "смеяться", "pair": null}, {"ko": "사랑에 빠지다", "ru": "влюбиться", "section": "Глаголы", "type": "normal", "help": "влюбиться", "pair": null}, {"ko": "있다", "ru": "быть, иметь, существовать", "section": "Глаголы", "type": "normal", "help": "быть, иметь, существовать", "pair": null}, {"ko": "울다", "ru": "плакать", "section": "Глаголы", "type": "normal", "help": "плакать", "pair": null}, {"ko": "청소하다", "ru": "убирать", "section": "Глаголы", "type": "normal", "help": "убирать", "pair": null}, {"ko": "좋아하다", "ru": "нравиться", "section": "Глаголы", "type": "normal", "help": "нравиться", "pair": null}, {"ko": "없다", "ru": "нет, отсутствовать", "section": "Глаголы", "type": "normal", "help": "нет, отсутствовать", "pair": null}, {"ko": "축하하다", "ru": "поздравлять", "section": "Глаголы", "type": "normal", "help": "поздравлять", "pair": null}, {"ko": "입다", "ru": "надевать (одежду)", "section": "Глаголы", "type": "normal", "help": "надевать (одежду)", "pair": null}, {"ko": "만나다", "ru": "встречать", "section": "Глаголы", "type": "normal", "help": "встречать", "pair": null}, {"ko": "말하다", "ru": "говорить", "section": "Глаголы", "type": "normal", "help": "говорить", "pair": null}, {"ko": "생각하다", "ru": "думать", "section": "Глаголы", "type": "normal", "help": "думать", "pair": null}, {"ko": "이야기하다", "ru": "рассказывать", "section": "Глаголы", "type": "normal", "help": "рассказывать", "pair": null}, {"ko": "춤추다", "ru": "танцевать", "section": "Глаголы", "type": "normal", "help": "танцевать", "pair": null}, {"ko": "묻다", "ru": "спрашивать", "section": "Глаголы", "type": "normal", "help": "спрашивать", "pair": null}, {"ko": "거짓말하다", "ru": "врать", "section": "Глаголы", "type": "normal", "help": "врать", "pair": null}, {"ko": "대답하다", "ru": "отвечать", "section": "Глаголы", "type": "normal", "help": "отвечать", "pair": null}, {"ko": "기억하다", "ru": "помнить", "section": "Глаголы", "type": "normal", "help": "помнить", "pair": null}, {"ko": "섞다", "ru": "смешивать", "section": "Глаголы", "type": "normal", "help": "смешивать", "pair": null}, {"ko": "끓이다", "ru": "кипятить; варить в воде", "section": "Глаголы", "type": "normal", "help": "кипятить; варить в воде", "pair": null}, {"ko": "재다", "ru": "взвешивать, замерять", "section": "Глаголы", "type": "normal", "help": "взвешивать, замерять", "pair": null}, {"ko": "굽다", "ru": "печь", "section": "Глаголы", "type": "normal", "help": "печь", "pair": null}, {"ko": "볶다", "ru": "жарить, тушить", "section": "Глаголы", "type": "normal", "help": "жарить, тушить", "pair": null}, {"ko": "튀기다", "ru": "жарить во фритюре", "section": "Глаголы", "type": "normal", "help": "жарить во фритюре", "pair": null}, {"ko": "걱정하다", "ru": "волноваться", "section": "Глаголы", "type": "normal", "help": "волноваться", "pair": null}, {"ko": "약속하다", "ru": "обещать", "section": "Глаголы", "type": "normal", "help": "обещать", "pair": null}, {"ko": "꿈꾸다", "ru": "мечтать", "section": "Глаголы", "type": "normal", "help": "мечтать", "pair": null}, {"ko": "전화하다", "ru": "звонить", "section": "Глаголы", "type": "normal", "help": "звонить", "pair": null}, {"ko": "씻다", "ru": "мыть", "section": "Глаголы", "type": "normal", "help": "мыть", "pair": null}, {"ko": "찍다", "ru": "фотографировать", "section": "Глаголы", "type": "normal", "help": "фотографировать", "pair": null}, {"ko": "나가다", "ru": "выходить", "section": "Глаголы", "type": "normal", "help": "выходить", "pair": null}, {"ko": "들어오다", "ru": "входить", "section": "Глаголы", "type": "normal", "help": "входить", "pair": null}, {"ko": "결혼하다", "ru": "жениться / выходить замуж", "section": "Глаголы", "type": "normal", "help": "жениться / выходить замуж", "pair": null}, {"ko": "이혼하다", "ru": "разводиться", "section": "Глаголы", "type": "normal", "help": "разводиться", "pair": null}, {"ko": "준비하다", "ru": "готовиться", "section": "Глаголы", "type": "normal", "help": "готовиться", "pair": null}, {"ko": "끄다", "ru": "выключать", "section": "Глаголы", "type": "normal", "help": "выключать", "pair": null}, {"ko": "시작하다", "ru": "начинать", "section": "Глаголы", "type": "normal", "help": "начинать", "pair": null}, {"ko": "도착하다", "ru": "прибывать", "section": "Глаголы", "type": "normal", "help": "прибывать", "pair": null}, {"ko": "타다", "ru": "садиться (на транспорт), кататься", "section": "Глаголы", "type": "normal", "help": "садиться (на транспорт), кататься", "pair": null}, {"ko": "걷다", "ru": "идти пешком", "section": "Глаголы", "type": "normal", "help": "идти пешком", "pair": null}, {"ko": "도와주다", "ru": "помогать", "section": "Глаголы", "type": "normal", "help": "помогать", "pair": null}, {"ko": "찾다", "ru": "искать, находить", "section": "Глаголы", "type": "normal", "help": "искать, находить", "pair": null}, {"ko": "보내다", "ru": "отправлять", "section": "Глаголы", "type": "normal", "help": "отправлять", "pair": null}, {"ko": "이기다", "ru": "выигрывать", "section": "Глаголы", "type": "normal", "help": "выигрывать", "pair": null}, {"ko": "지다", "ru": "проигрывать", "section": "Глаголы", "type": "normal", "help": "проигрывать", "pair": null}, {"ko": "피우다", "ru": "курить", "section": "Глаголы", "type": "normal", "help": "курить", "pair": null}, {"ko": "쯤에", "ru": "около (времени)", "section": "Дополнительно", "type": "normal", "help": "около (времени)", "pair": null}, {"ko": "수업", "ru": "урок, занятие", "section": "Дополнительно", "type": "normal", "help": "урок, занятие", "pair": null}, {"ko": "방학", "ru": "каникулы", "section": "Дополнительно", "type": "normal", "help": "каникулы", "pair": null}, {"ko": "운전", "ru": "вождение", "section": "Дополнительно", "type": "normal", "help": "вождение", "pair": null}, {"ko": "수학", "ru": "математика", "section": "Дополнительно", "type": "normal", "help": "математика", "pair": null}, {"ko": "수영하다", "ru": "плавать", "section": "Дополнительно", "type": "normal", "help": "плавать", "pair": null}, {"ko": "다니다", "ru": "ходить (регулярно)", "section": "Дополнительно", "type": "normal", "help": "ходить (регулярно)", "pair": null}, {"ko": "항상", "ru": "всегда", "section": "Дополнительно", "type": "normal", "help": "всегда", "pair": null}, {"ko": "친절하다", "ru": "быть добрым, приветливым", "section": "Дополнительно", "type": "normal", "help": "быть добрым, приветливым", "pair": null}, {"ko": "공무원", "ru": "государственный служащий", "section": "Дополнительно", "type": "normal", "help": "государственный служащий", "pair": null}, {"ko": "인사하다", "ru": "здороваться", "section": "Дополнительно", "type": "normal", "help": "здороваться", "pair": null}, {"ko": "이쪽은", "ru": "это (представление)", "section": "Дополнительно", "type": "normal", "help": "это (представление)", "pair": null}, {"ko": "한테서", "ru": "от (кого-то)", "section": "Дополнительно", "type": "normal", "help": "от (кого-то)", "pair": null}, {"ko": "직접", "ru": "лично, напрямую", "section": "Дополнительно", "type": "normal", "help": "лично, напрямую", "pair": null}, {"ko": "정문", "ru": "главный вход", "section": "Дополнительно", "type": "normal", "help": "главный вход", "pair": null}, {"ko": "받다", "ru": "получать", "section": "Дополнительно", "type": "normal", "help": "получать", "pair": null}, {"ko": "운동화", "ru": "кроссовки", "section": "Дополнительно", "type": "normal", "help": "кроссовки", "pair": null}, {"ko": "개", "ru": "собака / счётное слово", "section": "Дополнительно", "type": "normal", "help": "собака / счётное слово", "pair": null}, {"ko": "강아지", "ru": "щенок", "section": "Дополнительно", "type": "normal", "help": "щенок", "pair": null}, {"ko": "길", "ru": "дорога, улица", "section": "Дополнительно", "type": "normal", "help": "дорога, улица", "pair": null}, {"ko": "복잡하다", "ru": "сложный, загруженный", "section": "Дополнительно", "type": "normal", "help": "сложный, загруженный", "pair": null}, {"ko": "팔다", "ru": "продавать", "section": "Дополнительно", "type": "normal", "help": "продавать", "pair": null}, {"ko": "싸다", "ru": "дешёвый", "section": "Дополнительно", "type": "normal", "help": "дешёвый", "pair": null}, {"ko": "비싸다", "ru": "дорогой", "section": "Дополнительно", "type": "normal", "help": "дорогой", "pair": null}, {"ko": "깨끗하다", "ru": "чистый", "section": "Дополнительно", "type": "normal", "help": "чистый", "pair": null}, {"ko": "바지", "ru": "брюки", "section": "Дополнительно", "type": "normal", "help": "брюки", "pair": null}, {"ko": "작년", "ru": "прошлый год", "section": "Дополнительно", "type": "normal", "help": "прошлый год", "pair": null}, {"ko": "고향", "ru": "родной город, родина", "section": "Дополнительно", "type": "normal", "help": "родной город, родина", "pair": null}, {"ko": "단풍", "ru": "осенняя листва", "section": "Дополнительно", "type": "normal", "help": "осенняя листва", "pair": null}, {"ko": "처음", "ru": "первый раз, начало", "section": "Дополнительно", "type": "normal", "help": "первый раз, начало", "pair": null}, {"ko": "하늘", "ru": "небо", "section": "Дополнительно", "type": "normal", "help": "небо", "pair": null}, {"ko": "눈사람", "ru": "снеговик", "section": "Дополнительно", "type": "normal", "help": "снеговик", "pair": null}, {"ko": "자주", "ru": "часто", "section": "Дополнительно", "type": "normal", "help": "часто", "pair": null}, {"ko": "생활", "ru": "жизнь", "section": "Дополнительно", "type": "normal", "help": "жизнь", "pair": null}, {"ko": "가까워요", "ru": "близко", "section": "Дополнительно", "type": "normal", "help": "близко", "pair": null}, {"ko": "걸어서 가다", "ru": "идти пешком", "section": "Дополнительно", "type": "normal", "help": "идти пешком", "pair": null}, {"ko": "성함", "ru": "имя (вежл.)", "section": "Вежливые аналоги", "type": "polite_form", "pair": "이름", "help": "вежливая форма от 이름"}, {"ko": "댁", "ru": "дом (вежл.)", "section": "Вежливые аналоги", "type": "polite_form", "pair": "집", "help": "вежливая форма от 집"}, {"ko": "사람", "ru": "человек (вежл.) (обычн.)", "section": "Вежливые аналоги", "type": "polite_normal", "pair": "분", "help": "обычная форма → 분"}, {"ko": "분", "ru": "человек (вежл.)", "section": "Вежливые аналоги", "type": "polite_form", "pair": "사람", "help": "вежливая форма от 사람"}, {"ko": "나이", "ru": "возраст (вежл.) (обычн.)", "section": "Вежливые аналоги", "type": "polite_normal", "pair": "연세", "help": "обычная форма → 연세"}, {"ko": "연세", "ru": "возраст (вежл.)", "section": "Вежливые аналоги", "type": "polite_form", "pair": "나이", "help": "вежливая форма от 나이"}, {"ko": "계시다", "ru": "быть (о уважаемом лице) (вежл.)", "section": "Вежливые аналоги", "type": "polite_form", "pair": "있다", "help": "вежливая форма от 있다"}, {"ko": "먹다/마시다", "ru": "есть/пить (вежл.) (обычн.)", "section": "Вежливые аналоги", "type": "polite_normal", "pair": "드시다", "help": "обычная форма → 드시다"}, {"ko": "드시다", "ru": "есть/пить (вежл.)", "section": "Вежливые аналоги", "type": "polite_form", "pair": "먹다/마시다", "help": "вежливая форма от 먹다/마시다"}, {"ko": "주무시다", "ru": "спать (вежл.)", "section": "Вежливые аналоги", "type": "polite_form", "pair": "자다", "help": "вежливая форма от 자다"}, {"ko": "말씀하시다", "ru": "говорить (вежл.)", "section": "Вежливые аналоги", "type": "polite_form", "pair": "말하다", "help": "вежливая форма от 말하다"}, {"ko": "분/사람/명", "ru": "для людей", "section": "Счётные слова", "type": "normal", "help": "для людей", "pair": null}, {"ko": "마리", "ru": "для животных", "section": "Счётные слова", "type": "normal", "help": "для животных", "pair": null}, {"ko": "병", "ru": "для бутылок", "section": "Счётные слова", "type": "normal", "help": "для бутылок", "pair": null}, {"ko": "캔", "ru": "для банок", "section": "Счётные слова", "type": "normal", "help": "для банок", "pair": null}, {"ko": "대", "ru": "для механизмов, машин", "section": "Счётные слова", "type": "normal", "help": "для механизмов, машин", "pair": null}, {"ko": "잔/컵", "ru": "для чашек", "section": "Счётные слова", "type": "normal", "help": "для чашек", "pair": null}, {"ko": "권", "ru": "для книг", "section": "Счётные слова", "type": "normal", "help": "для книг", "pair": null}, {"ko": "그릇", "ru": "для порций еды", "section": "Счётные слова", "type": "normal", "help": "для порций еды", "pair": null}, {"ko": "조각", "ru": "для кусков", "section": "Счётные слова", "type": "normal", "help": "для кусков", "pair": null}, {"ko": "벌", "ru": "для комплектов одежды", "section": "Счётные слова", "type": "normal", "help": "для комплектов одежды", "pair": null}, {"ko": "켤레", "ru": "для парных вещей (обувь, носки)", "section": "Счётные слова", "type": "normal", "help": "для парных вещей (обувь, носки)", "pair": null}, {"ko": "살", "ru": "для возраста", "section": "Счётные слова", "type": "normal", "help": "для возраста", "pair": null}, {"ko": "동", "ru": "для упаковок", "section": "Счётные слова", "type": "normal", "help": "для упаковок", "pair": null}, {"ko": "장", "ru": "для листов, билетов, фото", "section": "Счётные слова", "type": "normal", "help": "для листов, билетов, фото", "pair": null}, {"ko": "일", "ru": "1", "section": "Китайские числительные", "type": "number", "help": "число 1", "pair": null}, {"ko": "이", "ru": "2", "section": "Китайские числительные", "type": "number", "help": "число 2", "pair": null}, {"ko": "삼", "ru": "3", "section": "Китайские числительные", "type": "number", "help": "число 3", "pair": null}, {"ko": "사", "ru": "4", "section": "Китайские числительные", "type": "number", "help": "число 4", "pair": null}, {"ko": "오", "ru": "5", "section": "Китайские числительные", "type": "number", "help": "число 5", "pair": null}, {"ko": "육", "ru": "6", "section": "Китайские числительные", "type": "number", "help": "число 6", "pair": null}, {"ko": "칠", "ru": "7", "section": "Китайские числительные", "type": "number", "help": "число 7", "pair": null}, {"ko": "팔", "ru": "8", "section": "Китайские числительные", "type": "number", "help": "число 8", "pair": null}, {"ko": "구", "ru": "9", "section": "Китайские числительные", "type": "number", "help": "число 9", "pair": null}, {"ko": "십", "ru": "10", "section": "Китайские числительные", "type": "number", "help": "число 10", "pair": null}, {"ko": "십일", "ru": "11", "section": "Китайские числительные", "type": "number", "help": "число 11", "pair": null}, {"ko": "이십일", "ru": "21", "section": "Китайские числительные", "type": "number", "help": "число 21", "pair": null}, {"ko": "삼십오", "ru": "35", "section": "Китайские числительные", "type": "number", "help": "число 35", "pair": null}, {"ko": "구십구", "ru": "99", "section": "Китайские числительные", "type": "number", "help": "число 99", "pair": null}, {"ko": "백", "ru": "100", "section": "Китайские числительные", "type": "number", "help": "число 100", "pair": null}, {"ko": "천", "ru": "1,000", "section": "Китайские числительные", "type": "number", "help": "число 1,000", "pair": null}, {"ko": "만", "ru": "10,000", "section": "Китайские числительные", "type": "number", "help": "число 10,000", "pair": null}, {"ko": "억", "ru": "100,000,000", "section": "Китайские числительные", "type": "number", "help": "число 100,000,000", "pair": null}, {"ko": "하나(한)", "ru": "1", "section": "Корейские числительные", "type": "number", "help": "число 1", "pair": null}, {"ko": "둘 (두)", "ru": "2", "section": "Корейские числительные", "type": "number", "help": "число 2", "pair": null}, {"ko": "셋 (세)", "ru": "3", "section": "Корейские числительные", "type": "number", "help": "число 3", "pair": null}, {"ko": "넷(네)", "ru": "4", "section": "Корейские числительные", "type": "number", "help": "число 4", "pair": null}, {"ko": "다섯", "ru": "5", "section": "Корейские числительные", "type": "number", "help": "число 5", "pair": null}, {"ko": "여섯", "ru": "6", "section": "Корейские числительные", "type": "number", "help": "число 6", "pair": null}, {"ko": "일곱", "ru": "7", "section": "Корейские числительные", "type": "number", "help": "число 7", "pair": null}, {"ko": "여덟", "ru": "8", "section": "Корейские числительные", "type": "number", "help": "число 8", "pair": null}, {"ko": "아홉", "ru": "9", "section": "Корейские числительные", "type": "number", "help": "число 9", "pair": null}, {"ko": "열", "ru": "10", "section": "Корейские числительные", "type": "number", "help": "число 10", "pair": null}, {"ko": "열하나", "ru": "11", "section": "Корейские числительные", "type": "number", "help": "число 11", "pair": null}, {"ko": "열둘", "ru": "12", "section": "Корейские числительные", "type": "number", "help": "число 12", "pair": null}, {"ko": "열아홉", "ru": "19", "section": "Корейские числительные", "type": "number", "help": "число 19", "pair": null}, {"ko": "스물", "ru": "20", "section": "Корейские числительные", "type": "number", "help": "число 20", "pair": null}, {"ko": "스물하나", "ru": "21", "section": "Корейские числительные", "type": "number", "help": "число 21", "pair": null}, {"ko": "서른", "ru": "30", "section": "Корейские числительные", "type": "number", "help": "число 30", "pair": null}, {"ko": "마흔", "ru": "40", "section": "Корейские числительные", "type": "number", "help": "число 40", "pair": null}, {"ko": "쉰", "ru": "50", "section": "Корейские числительные", "type": "number", "help": "число 50", "pair": null}, {"ko": "예순", "ru": "60", "section": "Корейские числительные", "type": "number", "help": "число 60", "pair": null}, {"ko": "일흔", "ru": "70", "section": "Корейские числительные", "type": "number", "help": "число 70", "pair": null}, {"ko": "여든", "ru": "80", "section": "Корейские числительные", "type": "number", "help": "число 80", "pair": null}, {"ko": "아흔", "ru": "90", "section": "Корейские числительные", "type": "number", "help": "число 90", "pair": null}, {"ko": "가족", "ru": "семья", "section": "Глава 9", "type": "normal", "help": "семья", "pair": null}, {"ko": "할머니", "ru": "бабушка", "section": "Глава 9", "type": "normal", "help": "бабушка", "pair": null}, {"ko": "할아버지", "ru": "дедушка", "section": "Глава 9", "type": "normal", "help": "дедушка", "pair": null}, {"ko": "누나", "ru": "старшая сестра (для мужчины)", "section": "Глава 9", "type": "normal", "help": "старшая сестра (для мужчины)", "pair": null}, {"ko": "형", "ru": "старший брат (для мужчины)", "section": "Глава 9", "type": "normal", "help": "старший брат (для мужчины)", "pair": null}, {"ko": "언니", "ru": "старшая сестра (для женщины)", "section": "Глава 9", "type": "normal", "help": "старшая сестра (для женщины)", "pair": null}, {"ko": "오빠", "ru": "старший брат (для женщины)", "section": "Глава 9", "type": "normal", "help": "старший брат (для женщины)", "pair": null}, {"ko": "여동생", "ru": "младшая сестра", "section": "Глава 9", "type": "normal", "help": "младшая сестра", "pair": null}, {"ko": "남동생", "ru": "младший брат", "section": "Глава 9", "type": "normal", "help": "младший брат", "pair": null}, {"ko": "아내", "ru": "жена", "section": "Глава 9", "type": "normal", "help": "жена", "pair": null}, {"ko": "남편", "ru": "муж", "section": "Глава 9", "type": "normal", "help": "муж", "pair": null}, {"ko": "딸", "ru": "дочь", "section": "Глава 9", "type": "normal", "help": "дочь", "pair": null}, {"ko": "아들", "ru": "сын", "section": "Глава 9", "type": "normal", "help": "сын", "pair": null}, {"ko": "새벽", "ru": "рассвет, раннее утро", "section": "Глава 10", "type": "normal", "help": "рассвет, раннее утро", "pair": null}, {"ko": "아침", "ru": "утро", "section": "Глава 10", "type": "normal", "help": "утро", "pair": null}, {"ko": "낮", "ru": "день", "section": "Глава 10", "type": "normal", "help": "день", "pair": null}, {"ko": "저녁", "ru": "вечер", "section": "Глава 10", "type": "normal", "help": "вечер", "pair": null}, {"ko": "밤", "ru": "ночь", "section": "Глава 10", "type": "normal", "help": "ночь", "pair": null}, {"ko": "오전", "ru": "до полудня", "section": "Глава 10", "type": "normal", "help": "до полудня", "pair": null}, {"ko": "오후", "ru": "после полудня", "section": "Глава 10", "type": "normal", "help": "после полудня", "pair": null}, {"ko": "버스를 기다리다", "ru": "ждать автобус", "section": "Глава 10", "type": "normal", "help": "ждать автобус", "pair": null}, {"ko": "버스를 타다", "ru": "садиться на автобус", "section": "Глава 10", "type": "normal", "help": "садиться на автобус", "pair": null}, {"ko": "빨래하다", "ru": "стирать", "section": "Глава 10", "type": "normal", "help": "стирать", "pair": null}, {"ko": "샤워하다", "ru": "принимать душ", "section": "Глава 10", "type": "normal", "help": "принимать душ", "pair": null}, {"ko": "일어나다", "ru": "вставать", "section": "Глава 10", "type": "normal", "help": "вставать", "pair": null}, {"ko": "컴퓨터를 하다", "ru": "работать за компьютером", "section": "Глава 10", "type": "normal", "help": "работать за компьютером", "pair": null}, {"ko": "회의하다", "ru": "проводить совещание", "section": "Глава 10", "type": "normal", "help": "проводить совещание", "pair": null}];
+const SECTION_TOTALS = {"Глава 1": 31, "Глава 2": 50, "Глава 3": 37, "Глава 4": 37, "Глава 5": 33, "Глава 6": 17, "Глава 7": 18, "Глава 8": 17, "Глаголы": 63, "Дополнительно": 36, "Вежливые аналоги": 11, "Счётные слова": 14, "Китайские числительные": 18, "Корейские числительные": 22, "Глава 9": 13, "Глава 10": 14};
+const SECTION_LABELS = {"Глава 1": "Глава 1 · Страны и профессии", "Глава 2": "Глава 2 · Предметы", "Глава 3": "Глава 3 · Действия и места", "Глава 4": "Глава 4 · Места и направления", "Глава 5": "Глава 5 · Дни и время", "Глава 6": "Глава 6 · Еда", "Глава 7": "Глава 7 · Погода", "Глава 8": "Глава 8 · Хобби и спорт", "Глава 9": "Глава 9 · Семья", "Глава 10": "Глава 10 · Распорядок дня", "Глаголы": "Глаголы", "Дополнительно": "Дополнительно", "Вежливые аналоги": "Вежливые аналоги", "Счётные слова": "Счётные слова", "Китайские числительные": "Китайские числительные", "Корейские числительные": "Корейские числительные"};
+
+let mode = 'korean';
+let remaining = [];
+let last = null;
+let lastShownLang = null;
+let currentFilter = 'all-level1';
+let unknownWords = JSON.parse(localStorage.getItem('koreanGoUnknown') || '[]');
+
+function shuffle(a) {
+  const arr = [...a];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function getFilteredWords() {
+  if (currentFilter === 'unknown') return ALL_WORDS.filter(w => unknownWords.includes(w.ko));
+  if (currentFilter === 'all' || currentFilter === 'all-level1') return ALL_WORDS;
+  return ALL_WORDS.filter(w => w.section === currentFilter);
+}
+
+function startGame() { selectFilter(null, 'all-level1'); }
+
+function showPanel(name) {
+  document.getElementById('panel-func').classList.remove('active');
+  document.getElementById('panel-stats').classList.remove('active');
+  document.getElementById('gameArea').style.display = 'none';
+  document.querySelectorAll('.menu-special,.menu-level,.submenu-item').forEach(e => e.classList.remove('active'));
+  if (name === 'func') {
+    document.getElementById('panel-func').classList.add('active');
+    document.getElementById('funcBtn').classList.add('active');
+  } else if (name === 'stats') {
+    document.getElementById('panel-stats').classList.add('active');
+    document.getElementById('statsBtn').classList.add('active');
+    renderStats();
+  }
+}
+
+function rebuildDeck() {
+  remaining = shuffle(getFilteredWords());
+  last = null;
+  lastShownLang = null;
+  const d = document.getElementById('wordDisplay');
+  if (d) d.textContent = 'Нажми «GO»';
+  const sb = document.getElementById('soundBtn');
+  if (sb) sb.style.display = 'none';
+  const h = document.getElementById('hintDisplay');
+  if (h) { h.textContent = ''; h.className = 'hint'; }
+  updateCardUI(null);
+  updateUI();
+}
+
+function updateUI() {
+  const badge = document.getElementById('modeBadge');
+  const btnKor = document.getElementById('btnKor');
+  const btnRus = document.getElementById('btnRus');
+  const btnUnknown = document.getElementById('btnUnknown');
+  if (!badge || !btnUnknown) return;
+
+  const isPolite = last && last.section === 'Вежливые аналоги';
+  const isNumerals = currentFilter.includes('числительные');
+  const isUnknownMode = currentFilter === 'unknown';
+
+  if (isPolite) { badge.textContent = 'ВЕЖЛИВЫЕ'; badge.className = 'mode-badge polite'; }
+  else if (isNumerals && mode === 'russian') { badge.textContent = 'ЦИФРЫ'; badge.className = 'mode-badge digits'; }
+  else if (mode === 'korean') { badge.textContent = 'КОРЕЙСКИЙ'; badge.className = 'mode-badge'; }
+  else { badge.textContent = 'РУССКИЙ'; badge.className = 'mode-badge russian'; }
+
+  btnKor.classList.toggle('active', mode === 'korean');
+  btnRus.classList.toggle('active', mode === 'russian');
+
+  if (isNumerals) {
+    btnRus.textContent = 'Цифры';
+    btnRus.className = 'btn-digits' + (mode === 'russian' ? ' active' : '');
+  } else {
+    btnRus.textContent = 'Русский';
+    btnRus.className = 'btn-rus' + (mode === 'russian' ? ' active' : '');
+  }
+
+  // Fix button text and style
+  if (isUnknownMode) {
+    btnUnknown.textContent = 'Я запомнил';
+    btnUnknown.className = 'btn-remembered';
+  } else {
+    btnUnknown.textContent = 'Не знаю';
+    btnUnknown.className = 'btn-unknown';
+  }
+
+  document.getElementById('progress').textContent = `Осталось: ${remaining.length}`;
+  const total = getFilteredWords().length;
+  let labelText = SECTION_LABELS[currentFilter] || currentFilter;
+  if (currentFilter === 'all') labelText = 'Все слова';
+  else if (currentFilter === 'all-level1') labelText = '1 уровень';
+  else if (currentFilter === 'unknown') labelText = 'Не знаю';
+  document.getElementById('currentFilterLabel').textContent = `${labelText} · ${total}`;
+  document.getElementById('unknownCount').textContent = unknownWords.length;
+}
+
+function updateCardUI(word) {
+  const card = document.getElementById('card');
+  const btnRus = document.getElementById('btnRus');
+  const btnTrans = document.getElementById('btnTrans');
+  const cardLabel = document.getElementById('cardLabel');
+  if (!card) return;
+  card.classList.remove('polite-mode','counting-mode');
+  if (!word) {
+    cardLabel.textContent = '';
+    btnRus.style.display = '';
+    btnTrans.textContent = 'Перевод';
+    btnTrans.className = 'btn-trans';
+    return;
+  }
+  if (word.section === 'Вежливые аналоги') {
+    card.classList.add('polite-mode');
+    cardLabel.textContent = 'Вежливые аналоги';
+    btnRus.style.display = 'none';
+    btnTrans.textContent = 'Аналог';
+    btnTrans.className = 'btn-analog';
+  } else if (word.section === 'Счётные слова') {
+    card.classList.add('counting-mode');
+    cardLabel.textContent = 'Счётные слова';
+    btnRus.style.display = '';
+    btnTrans.textContent = 'Перевод';
+    btnTrans.className = 'btn-trans';
+  } else {
+    cardLabel.textContent = '';
+    btnRus.style.display = '';
+    btnTrans.textContent = 'Перевод';
+    btnTrans.className = 'btn-trans';
+  }
+}
+
+function go() {
+  if (remaining.length === 0) remaining = shuffle(getFilteredWords());
+  if (remaining.length === 0) {
+    document.getElementById('wordDisplay').textContent = 'Список пуст';
+    return;
+  }
+  last = remaining.shift();
+  lastShownLang = mode;
+  const display = document.getElementById('wordDisplay');
+  const hint = document.getElementById('hintDisplay');
+  const isPolite = last.section === 'Вежливые аналоги';
+  hint.textContent = '';
+  hint.className = 'hint';
+  display.className = 'word' + (mode === 'russian' && !isPolite ? ' russian' : '');
+  display.textContent = (isPolite || mode === 'korean') ? last.ko : last.ru;
+
+  // Sound button visibility
+  const soundBtn = document.getElementById('soundBtn');
+  if (soundBtn) {
+    if (mode === 'korean' || isPolite) {
+      soundBtn.style.display = 'flex';
+    } else {
+      soundBtn.style.display = 'none';
+    }
+  }
+
+  updateCardUI(last);
+  updateUI();
+}
+
+function setMode(m) { mode = m; updateUI(); }
+
+function help() {
+  const hint = document.getElementById('hintDisplay');
+  if (!last) { hint.textContent = 'Сначала нажми «GO»'; return; }
+  hint.textContent = last.section + ' · придумываю как помочь';
+  hint.className = 'hint help';
+}
+
+function showTranslate() {
+  const hint = document.getElementById('hintDisplay');
+  if (!last) { hint.textContent = 'Сначала нажми «GO»'; return; }
+  if (last.section === 'Вежливые аналоги') {
+    hint.textContent = last.pair || 'Нет аналога';
+  } else {
+    hint.textContent = lastShownLang === 'korean' ? last.ru : last.ko;
+  }
+  hint.className = 'hint translation';
+}
+
+// CRITICAL: single reliable handler for the unknown button
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('btnUnknown');
+  if (btn) {
+    btn.addEventListener('click', function() {
+      if (!last) {
+        document.getElementById('hintDisplay').textContent = 'Сначала нажми «GO»';
+        return;
+      }
+      if (currentFilter === 'unknown') {
+        // Я запомнил
+        unknownWords = unknownWords.filter(k => k !== last.ko);
+        localStorage.setItem('koreanGoUnknown', JSON.stringify(unknownWords));
+        remaining = remaining.filter(w => w.ko !== last.ko);
+      } else {
+        // Не знаю
+        if (!unknownWords.includes(last.ko)) {
+          unknownWords.push(last.ko);
+          localStorage.setItem('koreanGoUnknown', JSON.stringify(unknownWords));
+        }
+      }
+      go();
+      updateUI();
+    });
+  }
+});
+
+
+function playSound() {
+  if (!last) return;
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(last.ko);
+  utterance.lang = 'ko-KR';
+  utterance.rate = 0.9;
+
+  // Пытаемся выбрать лучший доступный корейский голос
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = [
+    'Google 한국어',           // Chrome
+    'Yuna',                    // macOS / iOS
+    'Sora',                    // macOS / iOS
+    'Korean',                  // общие
+    'Microsoft Heami',         // Windows
+    'Microsoft SunHi',         // Windows
+    'heami',
+    'sunhi'
+  ];
+
+  let selected = null;
+
+  // Сначала ищем по точным предпочтительным именам
+  for (const name of preferred) {
+    selected = voices.find(v => v.name.includes(name) && (v.lang.startsWith('ko') || v.lang === 'ko-KR'));
+    if (selected) break;
+  }
+
+  // Если не нашли — берём любой корейский голос
+  if (!selected) {
+    selected = voices.find(v => v.lang.startsWith('ko'));
+  }
+
+  if (selected) {
+    utterance.voice = selected;
+  }
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// Некоторые браузеры загружают голоса асинхронно
+if (typeof speechSynthesis !== 'undefined') {
+  speechSynthesis.onvoiceschanged = () => {
+    // просто прогреваем список голосов
+    speechSynthesis.getVoices();
+  };
+}
+
+function selectFilter(el, filter) {
+  document.getElementById('panel-func').classList.remove('active');
+  document.getElementById('panel-stats').classList.remove('active');
+  document.getElementById('gameArea').style.display = 'block';
+  document.querySelectorAll('.submenu-item,.menu-special,.menu-level').forEach(e => e.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (filter !== 'all' && filter !== 'unknown') {
+    const lvl = document.getElementById('level1');
+    if (lvl) lvl.classList.add('active');
+  }
+  currentFilter = filter;
+  rebuildDeck();
+}
+
+function toggleLevel(el) {
+  el.classList.toggle('open');
+  const sub = document.getElementById('level1-sub');
+  if (sub) sub.classList.toggle('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+function renderStats() {
+  const grid = document.getElementById('statsGrid');
+  grid.innerHTML = '';
+  Object.keys(SECTION_TOTALS).sort().forEach(sec => {
+    const total = SECTION_TOTALS[sec];
+    const unk = ALL_WORDS.filter(w => w.section === sec && unknownWords.includes(w.ko)).length;
+    const known = total - unk;
+    const pct = total ? Math.round((known/total)*100) : 0;
+    const color = pct >= 80 ? '#8fd4a0' : pct >= 50 ? '#e8c070' : '#e88a8a';
+    const div = document.createElement('div');
+    div.className = 'stat-item';
+    div.innerHTML = `<div class="circle" style="background:conic-gradient(${color} ${pct*3.6}deg,#3d3548 0deg)"><div style="width:64px;height:64px;border-radius:50%;background:#2a2335;display:flex;align-items:center;justify-content:center">${pct}%</div></div><div class="stat-name">${SECTION_LABELS[sec]||sec}<br><small>${known}/${total}</small></div>`;
+    grid.appendChild(div);
+  });
+}
+
+updateUI();
+</script>
+</body>
+</html>
