@@ -296,15 +296,55 @@ button:active{transform:scale(.97)}
   <div class="container">
     <div class="panel active" id="panel-func">
       <h3>Как пользоваться Korean GO</h3>
-      <div class="func-item"><div class="title"><span class="func-badge">GO</span> Основная кнопка</div><div class="desc">Следующее случайное слово. Без повторов до конца колоды.</div></div>
-      <div class="func-item"><div class="title"><span class="func-badge">←</span> Назад</div><div class="desc">Вернуться к предыдущему слову.</div></div>
-      <div class="func-item"><div class="title"><span class="func-badge">Корейский / Русский</span></div><div class="desc">Язык следующего слова.</div></div>
-      <div class="func-item"><div class="title"><span class="func-badge">🔊</span> Звук</div><div class="desc">Произносит корейское слово.</div></div>
-      <div class="func-item"><div class="title"><span class="func-badge">Помощь</span></div><div class="desc">Показывает раздел слова.</div></div>
-      <div class="func-item"><div class="title"><span class="func-badge">Перевод</span></div><div class="desc">Показывает перевод.</div></div>
-      <div class="func-item"><div class="title"><span class="func-badge">Не знаю / Я запомнил</span></div><div class="desc">Добавляет/убирает слово из списка сложных.</div></div>
-      <div class="func-item"><div class="title">Боковая панель</div><div class="desc">• Уровни 1A–6B с главами<br>• «Повторить все» — все слова уровня<br>• «Все слова подряд» — весь словарь (1806 слов)<br>• «Не знаю» и «Статистика»</div></div>
-      <button class="btn-go" style="width:100%;margin-top:8px" onclick="startGame()">Начать заниматься →</button>
+      
+      <div class="func-item">
+        <div class="title"><span class="func-badge">GO</span> Основная кнопка</div>
+        <div class="desc">Показывает следующее случайное слово из выбранного раздела. Слова не повторяются, пока не закончится вся колода.</div>
+      </div>
+      
+      <div class="func-item">
+        <div class="title"><span class="func-badge">←</span> Кнопка «Назад»</div>
+        <div class="desc">Возвращает к предыдущему слову, если вы случайно пропустили его.</div>
+      </div>
+      
+      <div class="func-item">
+        <div class="title"><span class="func-badge">Корейский / Русский</span></div>
+        <div class="desc">Переключает язык, на котором будет показано <b>следующее</b> слово. Уже показанное слово не меняется.</div>
+      </div>
+      
+      <div class="func-item">
+        <div class="title"><span class="func-badge">🔊</span> Звук</div>
+        <div class="desc">Произносит корейское слово вслух. Работает лучше всего в Chrome и Edge.</div>
+      </div>
+      
+      <div class="func-item">
+        <div class="title"><span class="func-badge">Помощь</span></div>
+        <div class="desc">Показывает, из какого раздела слово. В будущем здесь появятся подсказки для запоминания.</div>
+      </div>
+      
+      <div class="func-item">
+        <div class="title"><span class="func-badge">Перевод</span></div>
+        <div class="desc">Показывает перевод текущего слова.</div>
+      </div>
+      
+      <div class="func-item">
+        <div class="title"><span class="func-badge">Не знаю / Я запомнил</span></div>
+        <div class="desc">«Не знаю» добавляет слово в отдельный список сложных слов. В разделе «Не знаю» кнопка меняется на «Я запомнил» и убирает слово из этого списка.</div>
+      </div>
+      
+      <div class="func-item">
+        <div class="title">Боковая панель</div>
+        <div class="desc">
+          • <b>Функционал</b> — эта инструкция<br>
+          • <b>1A – 6B</b> — слова по учебникам SNU Korean<br>
+          • <b>↻ Повторить все</b> — все слова одного уровня сразу<br>
+          • <b>Все слова подряд</b> — весь словарь сразу (1806 слов)<br>
+          • <b>Не знаю</b> — ваши сложные слова<br>
+          • <b>Статистика</b> — прогресс по главам
+        </div>
+      </div>
+      
+      <button class="btn-go" style="width:100%;margin-top:10px" onclick="startGame()">Начать заниматься →</button>
     </div>
 
     <div class="panel" id="panel-stats">
