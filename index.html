@@ -336,7 +336,8 @@ button:active{transform:scale(.97)}
         <div class="desc">Необязательное. Можно вписать перевод и нажать «Проверить» или Enter.<br>
         • 1-й Enter / Проверить — проверка ответа<br>
         • 2-й Enter — следующее слово (как GO)<br>
-        • Если ответ неверный — слово автоматически попадает в «Не знаю»</div>
+        • Если ответ неверный — слово автоматически попадает в «Не знаю»<br>
+        • В разделе «Не знаю» правильный ответ убирает слово из списка (как «Я запомнил»)</div>
       </div>
       
       <div class="func-item">
@@ -561,6 +562,14 @@ function checkAnswer() {
   if (isCorrect) {
     feedback.textContent = '✓ Верно';
     feedback.className = 'correct';
+    // В разделе «Не знаю» правильный ответ убирает слово из списка
+    if (currentFilter === 'unknown' && last) {
+      unknownWords = unknownWords.filter(k => k !== last.ko);
+      localStorage.setItem('koreanGoUnknown', JSON.stringify(unknownWords));
+      remaining = remaining.filter(w => w.ko !== last.ko);
+      const countEl = document.getElementById('unknownCount');
+      if (countEl) countEl.textContent = unknownWords.length;
+    }
   } else {
     feedback.textContent = '✗ ' + (lastShownLang === 'korean' ? last.ru : last.ko);
     feedback.className = 'wrong';
